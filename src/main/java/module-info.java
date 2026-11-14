@@ -6,7 +6,9 @@ module com.appregistros.proyectolaboratorio {
     requires org.postgresql.jdbc;
 
     opens com.appregistros.proyectolaboratorio to javafx.fxml;
+    opens com.appregistros.proyectolaboratorio.controller to javafx.fxml;
     opens com.appregistros.proyectolaboratorio.model to org.hibernate.orm.core;
     exports com.appregistros.proyectolaboratorio;
+    exports com.appregistros.proyectolaboratorio.controller;
     exports com.appregistros.proyectolaboratorio.model;
 }
