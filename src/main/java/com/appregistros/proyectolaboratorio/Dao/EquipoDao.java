@@ -41,7 +41,9 @@ public class EquipoDao {
     public List<Equipo> listarTodos() {
         EntityManager em = JPAUtil.getEntityManager();
         try {
-            return em.createQuery("SELECT e FROM Equipo e ORDER BY e.idEquipo", Equipo.class)
+            return em.createQuery(
+                            "SELECT e FROM Equipo e JOIN FETCH e.tipoEquipo t ORDER BY e.idEquipo",
+                            Equipo.class)
                     .getResultList();
         } finally {
             em.close();
@@ -85,10 +87,39 @@ public class EquipoDao {
         EntityManager em = JPAUtil.getEntityManager();
         try {
             return em.createQuery(
-                            "SELECT e FROM Equipo e WHERE e.tipoEquipo.idTipo = :idTipo ORDER BY e.idEquipo",
+                            "SELECT e FROM Equipo e JOIN FETCH e.tipoEquipo t WHERE t.idTipo = :idTipo ORDER BY e.idEquipo",
                             Equipo.class)
                     .setParameter("idTipo", idTipo)
                     .getResultList();
+        } finally {
+            em.close();
+        }
+    }
+
+    public List<Equipo> buscarPorFiltros(String nombre, Long idTipo) {
+        EntityManager em = JPAUtil.getEntityManager();
+        try {
+            StringBuilder jpql = new StringBuilder(
+                    "SELECT e FROM Equipo e JOIN FETCH e.tipoEquipo t WHERE 1 = 1");
+
+            if (nombre != null && !nombre.trim().isEmpty()) {
+                jpql.append(" AND LOWER(e.nombre) LIKE LOWER(:nombre)");
+            }
+            if (idTipo != null) {
+                jpql.append(" AND t.idTipo = :idTipo");
+            }
+            jpql.append(" ORDER BY e.idEquipo");
+
+            var query = em.createQuery(jpql.toString(), Equipo.class);
+
+            if (nombre != null && !nombre.trim().isEmpty()) {
+                query.setParameter("nombre", "%" + nombre.trim() + "%");
+            }
+            if (idTipo != null) {
+                query.setParameter("idTipo", idTipo);
+            }
+
+            return query.getResultList();
         } finally {
             em.close();
         }

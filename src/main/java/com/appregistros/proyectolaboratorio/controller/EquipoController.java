@@ -8,6 +8,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -17,8 +18,11 @@ import javafx.util.StringConverter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class EquipoController {
+
+    private static final List<String> ESTADOS_PERMITIDOS = List.of("Disponible", "Prestado", "En mantenimiento", "Dañado", "Baja");
 
     private final EquipoDao equipoDao = new EquipoDao();
     private final TipoEquipoDao tipoEquipoDao = new TipoEquipoDao();
@@ -127,19 +131,10 @@ public class EquipoController {
     }
 
     private void cargarEquiposFiltrados() {
-        String busqueda = txtBuscar.getText() == null ? "" : txtBuscar.getText().trim().toLowerCase();
-        List<Equipo> equipos = equipoDao.listarTodos();
-        ObservableList<Equipo> resultado = FXCollections.observableArrayList();
-
-        for (Equipo equipo : equipos) {
-            boolean coincideNombre = busqueda.isEmpty() || equipo.getNombre().toLowerCase().contains(busqueda);
-            boolean coincideTipo = cmbFiltroTipo.getValue() == null || equipo.getTipoEquipo() != null && equipo.getTipoEquipo().getIdTipo().equals(cmbFiltroTipo.getValue().getIdTipo());
-            if (coincideNombre && coincideTipo) {
-                resultado.add(equipo);
-            }
-        }
-
-        tblEquipos.setItems(resultado);
+        String nombre = txtBuscar.getText() == null ? "" : txtBuscar.getText().trim();
+        Long idTipo = cmbFiltroTipo.getValue() == null ? null : cmbFiltroTipo.getValue().getIdTipo();
+        List<Equipo> equipos = equipoDao.buscarPorFiltros(nombre, idTipo);
+        tblEquipos.setItems(FXCollections.observableArrayList(equipos));
     }
 
     private void cargarDatosEquipo(Equipo equipo) {
@@ -172,10 +167,14 @@ public class EquipoController {
         equipo.setEstado(cmbEstado.getValue());
         equipo.setCantidad(Integer.parseInt(txtCantidad.getText().trim()));
 
-        equipoDao.guardar(equipo);
-        limpiarFormulario();
-        cargarEquipos();
-        mostrarAlerta(Alert.AlertType.INFORMATION, "Equipo guardado", "El equipo se guardó correctamente.");
+        try {
+            equipoDao.guardar(equipo);
+            limpiarFormulario();
+            cargarEquipos();
+            mostrarAlerta(Alert.AlertType.INFORMATION, "Equipo guardado", "El equipo se guardó correctamente.");
+        } catch (Exception e) {
+            mostrarAlerta(Alert.AlertType.ERROR, "Error al guardar", "No se pudo guardar el equipo. Revise los datos e intente nuevamente.\n" + e.getMessage());
+        }
     }
 
     @FXML
@@ -210,10 +209,14 @@ public class EquipoController {
         equipo.setEstado(cmbEstado.getValue());
         equipo.setCantidad(Integer.parseInt(txtCantidad.getText().trim()));
 
-        equipoDao.guardar(equipo);
-        limpiarFormulario();
-        cargarEquipos();
-        mostrarAlerta(Alert.AlertType.INFORMATION, "Equipo actualizado", "El equipo se actualizó correctamente.");
+        try {
+            equipoDao.guardar(equipo);
+            limpiarFormulario();
+            cargarEquipos();
+            mostrarAlerta(Alert.AlertType.INFORMATION, "Equipo actualizado", "El equipo se actualizó correctamente.");
+        } catch (Exception e) {
+            mostrarAlerta(Alert.AlertType.ERROR, "Error al actualizar", "No se pudo actualizar el equipo.\n" + e.getMessage());
+        }
     }
 
     @FXML
@@ -224,10 +227,27 @@ public class EquipoController {
         }
 
         Long id = Long.parseLong(txtId.getText().trim());
-        equipoDao.eliminar(id);
-        limpiarFormulario();
-        cargarEquipos();
-        mostrarAlerta(Alert.AlertType.INFORMATION, "Equipo eliminado", "El equipo fue eliminado correctamente.");
+        Equipo equipoSeleccionado = equipoDao.buscarPorId(id);
+        String nombreEquipo = equipoSeleccionado != null ? equipoSeleccionado.getNombre() : "este equipo";
+
+        Alert confirmacion = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmacion.setTitle("Confirmar eliminación");
+        confirmacion.setHeaderText("¿Desea eliminar " + nombreEquipo + "?");
+        confirmacion.setContentText("Esta acción no se puede deshacer.");
+
+        Optional<ButtonType> resultado = confirmacion.showAndWait();
+        if (resultado.isEmpty() || resultado.get() != ButtonType.OK) {
+            return;
+        }
+
+        try {
+            equipoDao.eliminar(id);
+            limpiarFormulario();
+            cargarEquipos();
+            mostrarAlerta(Alert.AlertType.INFORMATION, "Equipo eliminado", "El equipo fue eliminado correctamente.");
+        } catch (Exception e) {
+            mostrarAlerta(Alert.AlertType.ERROR, "Error al eliminar", "No se pudo eliminar el equipo.\n" + e.getMessage());
+        }
     }
 
     @FXML
@@ -257,13 +277,21 @@ public class EquipoController {
             mostrarAlerta(Alert.AlertType.ERROR, "Campo requerido", "Debe seleccionar un estado.");
             return false;
         }
+        if (!ESTADOS_PERMITIDOS.contains(cmbEstado.getValue())) {
+            mostrarAlerta(Alert.AlertType.ERROR, "Estado no permitido", "El estado seleccionado no es válido.");
+            return false;
+        }
         if (txtCantidad.getText() == null || txtCantidad.getText().trim().isEmpty()) {
             mostrarAlerta(Alert.AlertType.ERROR, "Campo requerido", "La cantidad es obligatoria.");
             return false;
         }
 
         try {
-            Integer.parseInt(txtCantidad.getText().trim());
+            int cantidad = Integer.parseInt(txtCantidad.getText().trim());
+            if (cantidad < 0) {
+                mostrarAlerta(Alert.AlertType.ERROR, "Cantidad inválida", "La cantidad no puede ser negativa.");
+                return false;
+            }
         } catch (NumberFormatException e) {
             mostrarAlerta(Alert.AlertType.ERROR, "Cantidad inválida", "La cantidad debe ser un número entero.");
             return false;

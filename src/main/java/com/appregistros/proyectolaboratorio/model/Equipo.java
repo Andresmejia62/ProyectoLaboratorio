@@ -22,7 +22,7 @@ public class Equipo {
     @Column(name = "estado", nullable = false, length = 20)
     private String estado;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_tipo", nullable = false,
                 foreignKey = @ForeignKey(name = "fk_equipo_tipo_equipo"))
     private TipoEquipo tipoEquipo;
