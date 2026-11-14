@@ -22,7 +22,8 @@ import java.util.Optional;
 
 public class EquipoController {
 
-    private static final List<String> ESTADOS_PERMITIDOS = List.of("Disponible", "Prestado", "En mantenimiento", "Dañado", "Baja");
+    // Deben coincidir con la restricción chk_estado de inventario.equipo en PostgreSQL.
+    private static final List<String> ESTADOS_PERMITIDOS = List.of("Disponible", "En mantenimiento", "Fuera de servicio");
 
     private final EquipoDao equipoDao = new EquipoDao();
     private final TipoEquipoDao tipoEquipoDao = new TipoEquipoDao();
@@ -69,7 +70,7 @@ public class EquipoController {
     }
 
     private void configurarCombos() {
-        cmbEstado.getItems().setAll("Disponible", "Prestado", "En mantenimiento", "Dañado", "Baja");
+        cmbEstado.getItems().setAll(ESTADOS_PERMITIDOS);
 
         cmbTipo.setConverter(new StringConverter<>() {
             @Override
