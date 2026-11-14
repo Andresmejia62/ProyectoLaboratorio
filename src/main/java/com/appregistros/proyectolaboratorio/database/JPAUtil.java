@@ -44,7 +44,7 @@ public class JPAUtil {
             properties.put("hibernate.hbm2ddl.auto", "update");
             properties.put("hibernate.show_sql", "false");
 
-            entityManagerFactory = Persistence.createEntityManagerFactory("bd_laboratorio_orm", properties);
+            entityManagerFactory = Persistence.createEntityManagerFactory("laboratorio_orm", properties);
         }
     }
 
